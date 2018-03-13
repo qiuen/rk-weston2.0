@@ -46,6 +46,20 @@ struct screenshooter_frame_listener {
 	void *data;
 };
 
+typedef struct {
+   int xres;
+   int yres;
+   int refresh;
+   int interlaced;
+   int reserved[3];
+} HdmiInfo_t;
+
+typedef struct {
+   int count;
+   HdmiInfo_t hdmi_info[100];
+} HdmiInfos_t;
+
+
 static void
 copy_bgra_yflip(uint8_t *dst, uint8_t *src, int height, int stride)
 {
@@ -168,6 +182,81 @@ screenshooter_frame_notify(struct wl_listener *listener, void *data)
 	free(pixels);
 	free(l);
 }
+
+WL_EXPORT int weston_displayconfig_setmode(struct weston_output *output,
+			int32_t width,
+			int32_t height,
+			int32_t refresh,
+			int32_t flag,
+			int32_t reserved,weston_screenshooter_done_func_t done, void *data) {
+
+	 
+	weston_log(">>>enter weston_displayconfig_setmode,width=%d,height=%d,refresh=%d\n",width, height, refresh);
+	struct weston_mode *mode;
+	struct wl_list mode_list = output->mode_list;
+	struct wl_list link = output->link;
+	wl_list_for_each (mode,  &mode_list, link) {
+		
+		 weston_log("=======%s,switch_mode,width=%d,height=%d,refresh=%d\n",__FUNCTION__,mode->width, mode->height, mode->refresh);
+		 if (mode->width == width && mode->height == height && mode->refresh==refresh) {
+             weston_log("%s,switch_mode,width=%d,height=%d,refresh=%d,flag=%d\n",__FUNCTION__,width, height, refresh,flag);
+			 mode->flags = flag;
+             output->switch_mode(output, mode);
+			 done(data, 0);
+			 break;
+		 }
+	}
+
+	return 0;
+}
+
+
+WL_EXPORT int
+weston_displayconfig_getresource(struct weston_output *output, char* modes) {
+   if (modes != NULL) {
+      memcpy((void*)modes, "hello world\0", 12);
+      weston_log(">>>enter weston_displayconfig_getresource.len=%d,%s\n",strlen(modes),modes);
+   }
+   return 0;
+}
+
+WL_EXPORT int
+weston_displayconfig_getresource2(struct weston_output *output,
+			   struct weston_buffer *buffer,
+			   weston_screenshooter_done_func_t done, void *data) {
+
+  if (!wl_shm_buffer_get(buffer->resource)) {
+		done(data, WESTON_SCREENSHOOTER_BAD_BUFFER);
+		return -1;
+	}
+    
+	buffer->shm_buffer = wl_shm_buffer_get(buffer->resource);
+	uint8_t *d = wl_shm_buffer_get_data(buffer->shm_buffer);
+	struct weston_mode *mode;
+	struct wl_list mode_list = output->mode_list;
+	struct wl_list link = output->link;
+	HdmiInfos_t hdminfos;
+        int i = 0;
+	memset(&hdminfos, 0, sizeof(HdmiInfos_t));
+	wl_list_for_each (mode,  &mode_list, link) {
+         weston_log("========width=%d,height=%d,refresh=%d,flag=%d\n",mode->width,mode->height,mode->refresh,mode->flags); 
+         if (mode->width != 0) {
+			hdminfos.hdmi_info[i].xres = mode->width;
+			hdminfos.hdmi_info[i].yres = mode->height;
+			hdminfos.hdmi_info[i].refresh = mode->refresh;
+			hdminfos.hdmi_info[i].interlaced = 0;
+            i++;
+		    if (i > 80) {
+              break;
+			}
+		 }
+	}
+	hdminfos.count = i;
+	memcpy(d, &hdminfos, sizeof(HdmiInfos_t));
+	done(data, 0);
+    return 0;
+}
+
 
 WL_EXPORT int
 weston_screenshooter_shoot(struct weston_output *output,

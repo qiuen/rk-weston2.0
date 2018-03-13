@@ -1748,6 +1748,9 @@ typedef void (*weston_screenshooter_done_func_t)(void *data,
 int
 weston_screenshooter_shoot(struct weston_output *output, struct weston_buffer *buffer,
 			   weston_screenshooter_done_func_t done, void *data);
+int 
+weston_displayconfig_getresource(struct weston_output *output, char* modes);
+
 struct weston_recorder *
 weston_recorder_start(struct weston_output *output, const char *filename);
 void

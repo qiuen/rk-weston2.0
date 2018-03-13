@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <assert.h>
+#include <ctype.h>
 
 #include <wayland-client.h>
 
@@ -240,9 +242,33 @@ print_output_info(void *data)
 	}
 }
 
+static char
+bits2graph(uint32_t value, unsigned bitoffset)
+{
+	int c = (value >> bitoffset) & 0xff;
+
+	if (isgraph(c) || isspace(c))
+		return c;
+
+	return '?';
+}
+
+static void
+fourcc2str(uint32_t format, char *str, int len)
+{
+	int i;
+
+	assert(len >= 5);
+
+	for (i = 0; i < 4; i++)
+		str[i] = bits2graph(format, i * 8);
+	str[i] = '\0';
+}
+
 static void
 print_shm_info(void *data)
 {
+	char str[5];
 	struct shm_info *shm = data;
 	struct shm_format *format;
 

@@ -493,7 +493,8 @@ WL_EXPORT void
 weston_surface_set_color(struct weston_surface *surface,
 		 float red, float green, float blue, float alpha)
 {
-	surface->compositor->renderer->surface_set_color(surface, red, green, blue, alpha);
+        
+	surface->compositor->renderer->surface_set_color(surface, 0.0f, 0.0f, 0.0f, 0.0f);
 }
 
 WL_EXPORT void

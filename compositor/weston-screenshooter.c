@@ -42,6 +42,14 @@ struct screenshooter {
 	struct weston_recorder *recorder;
 };
 
+struct displayconfig {
+	struct weston_compositor *ec;
+	struct wl_global *global;
+	struct wl_client *client;
+	struct weston_process process;
+	struct wl_listener destroy_listener;
+};
+
 static void
 screenshooter_done(void *data, enum weston_screenshooter_outcome outcome)
 {
@@ -58,6 +66,72 @@ screenshooter_done(void *data, enum weston_screenshooter_outcome outcome)
 		break;
 	}
 }
+
+static void 
+displayconfig_done(void *data, enum weston_display_coinfig_error err) 
+{
+	
+	struct wl_resource *resource = data;
+	switch (err) {
+		case WESTON_DISPLAY_COINFIG_ERROR_OK:
+		     weston_display_coinfig_send_finished(resource);
+		     break;
+		case WESTON_DISPLAY_COINFIG_ERROR_FAIL:
+		     weston_display_coinfig_send_finished(resource);
+	         break;
+	}
+	
+}
+
+static void 
+displayconfig_GetResource(struct wl_client *client,
+			    struct wl_resource *resource,
+			    const char *modes) 
+{
+
+	struct weston_output *output =
+	wl_resource_get_user_data(resource);
+	weston_displayconfig_getresource(output, modes);   
+}
+
+static void
+displayconfig_GetResource2 (struct wl_client *client,
+			     struct wl_resource *resource,
+			     struct wl_resource *output,
+			     struct wl_resource *modes) {
+
+				 
+   	struct weston_output *output2 =
+		wl_resource_get_user_data(output);
+	struct weston_buffer *buffer =
+		weston_buffer_from_resource(modes);
+
+	if (buffer == NULL) {
+		wl_resource_post_no_memory(resource);
+		return;
+	}
+
+	weston_displayconfig_getresource2(output2, buffer, displayconfig_done, resource);
+  
+
+}
+
+static void
+displayconfig_SetMode(struct wl_client *client,
+			struct wl_resource *resource,
+			struct wl_resource *output,
+			int32_t width,
+			int32_t height,
+			int32_t refresh,
+			int32_t flag,
+			int32_t reserved) {
+
+ //   weston_log("+++++++++width=%d,height=%d,refresh=%d,flag=%d\n",width,height,refresh,flag);
+    struct weston_output *output2 = wl_resource_get_user_data(output);
+	
+	weston_displayconfig_setmode(output2, width, height, refresh, flag, reserved,displayconfig_done,resource);
+}
+
 
 static void
 screenshooter_shoot(struct wl_client *client,
@@ -82,6 +156,13 @@ struct weston_screenshooter_interface screenshooter_implementation = {
 	screenshooter_shoot
 };
 
+struct weston_display_coinfig_interface displayconfig_implementation = {
+	displayconfig_GetResource,
+	displayconfig_GetResource2,
+	displayconfig_SetMode
+};
+
+
 static void
 bind_shooter(struct wl_client *client,
 	     void *data, uint32_t version, uint32_t id)
@@ -91,14 +172,27 @@ bind_shooter(struct wl_client *client,
 
 	resource = wl_resource_create(client,
 				      &weston_screenshooter_interface, 1, id);
-
+      /*
 	if (client != shooter->client) {
 		wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
 				       "screenshooter failed: permission denied");
 		return;
-	}
+	}*/
 
 	wl_resource_set_implementation(resource, &screenshooter_implementation,
+				       data, NULL);
+}
+
+
+static void
+bind_displayconfig (struct wl_client *client,
+	     void *data, uint32_t version, uint32_t id) {
+	struct displayconfig *config = data;
+	struct wl_resource *resource;
+
+	resource = wl_resource_create(client,&weston_display_coinfig_interface, 1, id);		 
+			 
+	wl_resource_set_implementation(resource, &displayconfig_implementation,
 				       data, NULL);
 }
 
@@ -168,25 +262,45 @@ screenshooter_destroy(struct wl_listener *listener, void *data)
 	free(shooter);
 }
 
+
+static void
+displayconfig_destroy(struct wl_listener *listener, void *data)
+{
+	struct displayconfig *config =
+		container_of(listener, struct displayconfig, destroy_listener);
+
+	wl_global_destroy(config->global);
+	free(config);
+}
+
 WL_EXPORT void
 screenshooter_create(struct weston_compositor *ec)
 {
 	struct screenshooter *shooter;
-
+    struct displayconfig *config;
 	shooter = zalloc(sizeof *shooter);
+	config  = zalloc(sizeof *config);
 	if (shooter == NULL)
+		return;
+	if (config == NULL) 
 		return;
 
 	shooter->ec = ec;
+	config->ec = ec;
 
 	shooter->global = wl_global_create(ec->wl_display,
 					   &weston_screenshooter_interface, 1,
 					   shooter, bind_shooter);
+	config->global = wl_global_create(ec->wl_display,
+					   &weston_display_coinfig_interface, 1,
+					   config, bind_displayconfig);
 	weston_compositor_add_key_binding(ec, KEY_S, MODIFIER_SUPER,
 					  screenshooter_binding, shooter);
 	weston_compositor_add_key_binding(ec, KEY_R, MODIFIER_SUPER,
 					  recorder_binding, shooter);
-
+    
+	config->destroy_listener.notify = displayconfig_destroy;
 	shooter->destroy_listener.notify = screenshooter_destroy;
 	wl_signal_add(&ec->destroy_signal, &shooter->destroy_listener);
+	wl_signal_add(&ec->destroy_signal, &config->destroy_listener);
 }

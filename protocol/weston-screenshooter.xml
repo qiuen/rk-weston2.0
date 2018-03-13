@@ -8,5 +8,39 @@
     <event name="done">
     </event>
   </interface>
+  
+  
+<interface name="weston_display_coinfig" version="1">
+    <description summary="weston dislay config">
+      Internal testing facilities for the weston compositor.
+
+    </description>
+    
+	<request name="GetResource">
+      <arg name="modes" type="string"/>
+ 
+    </request>
+
+   <request name="GetResource2">
+	  <arg name="output" type="object" interface="wl_output"/>
+      <arg name="modes" type="object" interface="wl_buffer"/>
+   </request>
+   
+   <request name="SetMode">
+      <arg name="output" type="object" interface="wl_output"/>
+      <arg name="width" type="int"/>
+      <arg name="height" type="int"/>
+      <arg name="refresh" type="int"/>
+	  <arg name="flag" type="int"/>
+	  <arg name="reserved" type="int"/>
+  </request>
+	
+	<event name="finished"/>
+	
+	<enum name="error">
+      <entry name="ok" value="0" summary="get hdmi modes succ."/>
+      <entry name="fail" value="-1" summary="get hdmi modes fail."/>
+    </enum>
+ </interface>
 
 </protocol>

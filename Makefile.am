@@ -71,10 +71,10 @@ install-libweston_moduleLTLIBRARIES install-moduleLTLIBRARIES: install-libLTLIBR
 
 lib_LTLIBRARIES = libweston-@LIBWESTON_MAJOR@.la
 libweston_@LIBWESTON_MAJOR@_la_CPPFLAGS = $(AM_CPPFLAGS) -DIN_WESTON
-libweston_@LIBWESTON_MAJOR@_la_CFLAGS = $(AM_CFLAGS) $(COMPOSITOR_CFLAGS) $(LIBUNWIND_CFLAGS)
+libweston_@LIBWESTON_MAJOR@_la_CFLAGS = $(AM_CFLAGS) $(COMPOSITOR_CFLAGS) $(LIBUNWIND_CFLAGS)  -Xlinker --unresolved-symbols=ignore-in-shared-libs
 libweston_@LIBWESTON_MAJOR@_la_LIBADD = $(COMPOSITOR_LIBS) $(LIBUNWIND_LIBS) \
 	$(DLOPEN_LIBS) -lm $(CLOCK_GETTIME_LIBS) \
-	$(LIBINPUT_BACKEND_LIBS) libshared.la
+	$(LIBINPUT_BACKEND_LIBS) libshared.la -lhdmiset
 libweston_@LIBWESTON_MAJOR@_la_LDFLAGS = -version-info $(LT_VERSION_INFO)
 
 libweston_@LIBWESTON_MAJOR@_la_SOURCES =			\
@@ -365,6 +365,7 @@ drm_backend_la_LIBADD =				\
 	$(DRM_COMPOSITOR_LIBS)			\
 	$(INPUT_BACKEND_LIBS)			\
 	libshared.la				\
+	-lhdmiset				\
 	$(CLOCK_GETTIME_LIBS)
 drm_backend_la_CFLAGS =				\
 	$(COMPOSITOR_CFLAGS)			\
@@ -955,6 +956,20 @@ nodist_desktop_shell_la_SOURCES =			\
 
 BUILT_SOURCES += $(nodist_desktop_shell_la_SOURCES)
 endif
+
+libweston_module_LTLIBRARIES += libdisplayconfig3.la
+libdisplayconfig3_la_CPPFLAGS =                  \
+        -I$(top_builddir)/protocol              \
+        -I$(top_srcdir)/shared
+libdisplayconfig3_la_LDFLAGS = -module -avoid-version 
+libdisplayconfig3_la_LIBADD = $(CLIENT_LIBS) libshared.la
+libdisplayconfig3_la_CFLAGS = $(AM_CFLAGS) $(COMPOSITOR_CFLAGS) -fPIC -shared
+libdisplayconfig3_la_SOURCES =                      \
+	clients/displayconfig.c							\
+	clients/displayconfig.h							\
+	protocol/weston-screenshooter-protocol.c        \
+	protocol/weston-screenshooter-client-protocol.h
+
 
 if ENABLE_FULLSCREEN_SHELL
 
