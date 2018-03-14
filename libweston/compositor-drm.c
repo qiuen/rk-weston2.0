@@ -738,13 +738,20 @@ drm_output_repaint(struct weston_output *output_base,
         test_flag = 1;
 		output_base->set_dpms(output_base, WESTON_DPMS_ON);
 		if (fake_conn > 0) {
+			if (drmModePageFlip(backend->drm.fd, output->crtc_id,
+				output->next->fb_id,
+				DRM_MODE_PAGE_FLIP_EVENT, output) < 0) {
+				weston_log("queueing pageflip failed: %m\n");
+				goto err_pageflip;
+			}
 			int hdmi_mode_fd = open("/sys/class/drm/card0/card0-HDMI-A-1/status", O_RDWR);
 			if (hdmi_mode_fd > 0) {
 				write(hdmi_mode_fd, "detect", 6);
 				close(hdmi_mode_fd);
-				fake_conn = 0;
+				fake_conn = 0;			
 			}
-			close(hdmi_mode_fd);
+			return 0;
+
 		}
 	}
 
@@ -2341,7 +2348,7 @@ drm_output_choose_initial_mode(struct drm_backend *backend,
 		   best = drm_mode;	
 		   current = drm_mode;
 		   preferred = drm_mode;
-		   weston_log("++++++++++++++-----width=%d,height=%d,flags=0x%x\n",drm_mode->base.width , drm_mode->base.height, drm_mode->mode_info.flags);
+		   weston_log("width=%d,height=%d,flags=0x%x\n",drm_mode->base.width , drm_mode->base.height, drm_mode->mode_info.flags);
 		   break;
 		}
 		
@@ -2860,28 +2867,11 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 		for (i = 0; i < resources->count_connectors; i++) {
 			if (connected[i] == output->connector_id) {
 				disconnected = false;
-				//if (connector_change == output->connector_id) {
-                    //
-                  /*  struct drm_mode *drm_mode, *link_next;
-					wl_list_for_each_safe(drm_mode, link_next, &output->base.mode_list,base.link) {
-						wl_list_remove(&drm_mode->base.link);
-						free(drm_mode);
-					}*/
-					for (int j=0; j<list.numHdmiMode; j++) {
-						struct drm_mode *mode = NULL;
-						mode = malloc(sizeof *mode);
-						if (mode == NULL)
-						  return NULL;
-						mode->base.width = list.hdmimode[j].xres;
-						mode->base.height = list.hdmimode[j].yres;
-						mode->base.flags = list.hdmimode[j].interlaced;
-						mode->base.refresh = list.hdmimode[j].refresh;
-					    wl_list_insert(output->base.mode_list.prev, &mode->base.link);
-						weston_log(" update_outputs width=%d,height=%d,flags=%d,refresh=%d\n", mode->base.width,mode->base.height,mode->base.flags,mode->base.refresh);
-                         
-					//}
-					
-				}
+				/*wl_list_init(&output->base.mode_list);
+				for (i = 0; i < output->connector->count_modes; i++) {
+				    drm_output_add_mode(output, &output->connector->modes[i]);
+				}*/
+		              
 				break;
 			}
 		}
@@ -2933,21 +2923,21 @@ udev_event_is_hotplug(struct drm_backend *b, struct udev_device *device)
 }
 
 static int first_hotplug = 0;
-
-static int
+pthread_mutex_t mut;  
+static int                         
 udev_drm_event(int fd, uint32_t mask, void *data)
 {
 	struct drm_backend *b = data;
 	struct udev_device *event;
-
+     pthread_mutex_lock(&mut); 
 	event = udev_monitor_receive_device(b->udev_monitor);
-  	if (udev_event_is_hotplug(b, event) && first_hotplug > 0)
+  	if (udev_event_is_hotplug(b, event)  && first_hotplug > 0)
 		update_outputs(b, event);
 	udev_device_unref(event);
-	first_hotplug = 1;
+	first_hotplug++;
+	/*int hdmi_mode_fd = open("/sys/class/drm/card0/card0-HDMI-A-1/status", O_RDWR);
 	char value0[100];
 	memset(value0, 0, 100);
-	int hdmi_mode_fd = open("/sys/class/drm/card0/card0-HDMI-A-1/status", O_RDWR);
 	if (hdmi_mode_fd > 0) {
 	    read(hdmi_mode_fd, value0, 6);
 		weston_log("qiuen312, value: %s \n",value0);
@@ -2960,7 +2950,10 @@ udev_drm_event(int fd, uint32_t mask, void *data)
 		}
 		close(hdmi_mode_fd);
 	}
-
+	 
+	  close(hdmi_mode_fd);*/
+	   usleep(2000000);
+      pthread_mutex_unlock(&mut); 
 	return 1;
 }
 
@@ -3294,6 +3287,7 @@ drm_backend_create(struct weston_compositor *compositor,
 	const char *seat_id = default_seat;
 	int ret;
 	char value0[100];
+    pthread_mutex_init(&mut,NULL);
 	weston_log("enter initializing drm backend\n");
     memset(value0, 0, 100);
 	int hdmi_mode_fd = open("/sys/class/drm/card0/card0-HDMI-A-1/status", O_RDWR);
@@ -3378,6 +3372,7 @@ drm_backend_create(struct weston_compositor *compositor,
 	weston_setup_vt_switch_bindings(compositor);
 
 	wl_list_init(&b->sprite_list);
+    usleep(100000);
 	create_sprites(b);
 
 	if (udev_input_init(&b->input,
