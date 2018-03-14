@@ -1492,7 +1492,7 @@ drm_output_switch_mode(struct weston_output *output_base, struct weston_mode *mo
 	//output->base.current_mode->flags =
 	//	WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED;
   //  printf("++++width=%d,height=%d,refresh=%d,flag=%d\n", mode->width, mode->height, mode->refresh, mode->flags);
-	ret = hdmi_set_resolution(mode->width, mode->height, mode->refresh/1000, mode->flags);
+	int ret = hdmi_set_resolution(mode->width, mode->height, mode->refresh/1000, mode->flags);
         UpdateDisplaySize(0, 0, 1920, 1080, 0, 0, mode->width, mode->height);
      
 	return 0;
