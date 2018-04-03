@@ -2935,7 +2935,7 @@ udev_drm_event(int fd, uint32_t mask, void *data)
 		update_outputs(b, event);
 	udev_device_unref(event);
 	first_hotplug++;
-	/*int hdmi_mode_fd = open("/sys/class/drm/card0/card0-HDMI-A-1/status", O_RDWR);
+	int hdmi_mode_fd = open("/sys/class/drm/card0/card0-HDMI-A-1/status", O_RDWR);
 	char value0[100];
 	memset(value0, 0, 100);
 	if (hdmi_mode_fd > 0) {
@@ -2951,7 +2951,7 @@ udev_drm_event(int fd, uint32_t mask, void *data)
 		close(hdmi_mode_fd);
 	}
 	 
-	  close(hdmi_mode_fd);*/
+	  close(hdmi_mode_fd);
 	   usleep(2000000);
       pthread_mutex_unlock(&mut); 
 	return 1;
