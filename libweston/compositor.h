@@ -223,6 +223,7 @@ struct weston_output {
 
 	int (*enable)(struct weston_output *output);
 	int (*disable)(struct weston_output *output);
+	struct weston_mode *buffer_mode;
 };
 
 enum weston_pointer_motion_mask {
