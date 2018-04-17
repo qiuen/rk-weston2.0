@@ -2908,7 +2908,7 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
      
 	if (hdmi_flag > 0) {
         
-		int tv_status_fd = open("/sys/class/drm/card0/card0-TV-1/status", O_RDWR);
+		/*int tv_status_fd = open("/sys/class/drm/card0/card0-TV-1/status", O_RDWR);
 		if (tv_status_fd > 0) {
 			if (hdmi_flag == 1) {
 				weston_log("#####enable cvbs.\n");
@@ -2918,7 +2918,7 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 				write(tv_status_fd, "off", 3);
 			}
 			close(tv_status_fd);
-		}
+		}*/
 		
 	}
 }
