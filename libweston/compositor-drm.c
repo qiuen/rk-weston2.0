@@ -715,38 +715,20 @@ drm_output_repaint(struct weston_output *output_base,
 		drm_output_render(output, damage);
 	if (!output->next)
 		return -1;
+
 	mode = container_of(output->base.current_mode, struct drm_mode, base);
 	if (!output->current ||
 	    output->current->stride != output->next->stride) {
-            if ( output->base.current_mode->width>=1920 && output->base.current_mode->height>=1080) {
-				mode = container_of(output->base.buffer_mode, struct drm_mode, base);
-                ret = drmModeSetCrtc(backend->drm.fd, output->crtc_id,
-						output->next->fb_id, 0, 0,
-						&output->connector_id, 1,
-						&mode->mode_info);
-					if (ret) {
-						weston_log("set mode failed: %m\n");
-						goto err_pageflip;
-					}
-					output_base->set_dpms(output_base, WESTON_DPMS_ON);
-					weston_log("???????????????????width=%d,height=%d\n",output->base.current_mode->width,output->base.current_mode->height);
-                    hdmi_set_resolution(output->base.current_mode->width, output->base.current_mode->height, 60, 0);
-					usleep(32000);
-					UpdateDisplaySize(0, 0, output->base.buffer_mode->width, output->base.buffer_mode->height, 0, 0, output->base.current_mode->width, output->base.current_mode->height);
-             
-            } else {
-				ret = drmModeSetCrtc(backend->drm.fd, output->crtc_id,
-						output->next->fb_id, 0, 0,
-						&output->connector_id, 1,
-						&mode->mode_info);
-					if (ret) {
-						weston_log("set mode failed: %m\n");
-						goto err_pageflip;
-					}
-					output_base->set_dpms(output_base, WESTON_DPMS_ON);
-					UpdateDisplaySize(0, 0, output->base.buffer_mode->width, output->base.buffer_mode->height, 0, 0, output->base.current_mode->width, output->base.current_mode->height);
-			}	
-    }
+		ret = drmModeSetCrtc(backend->drm.fd, output->crtc_id,
+				     output->next->fb_id, 0, 0,
+				     &output->connector_id, 1,
+				     &mode->mode_info);
+		if (ret) {
+			weston_log("set mode failed: %m\n");
+			goto err_pageflip;
+		}
+		output_base->set_dpms(output_base, WESTON_DPMS_ON);
+	}
 
 	if (drmModePageFlip(backend->drm.fd, output->crtc_id,
 			    output->next->fb_id,
@@ -1470,8 +1452,8 @@ drm_output_switch_mode(struct weston_output *output_base, struct weston_mode *mo
 	
 	output = to_drm_output(output_base);
    	int ret = hdmi_set_resolution(mode->width, mode->height, mode->refresh/1000, mode->flags);
-	weston_log("&&&&&&&&&&&&&&&&&buffer_mode->width=%d,buffer_mode->height=%d\n",output->base.buffer_mode->width, output->base.buffer_mode->height);
-	UpdateDisplaySize(0, 0, output->base.buffer_mode->width, output->base.buffer_mode->height, 0, 0, mode->width, mode->height);
+	
+	UpdateDisplaySize(0, 0, output->base.current_mode->width, output->base.current_mode->height, 0, 0, mode->width, mode->height);
 	
 	return 0;
 	b = to_drm_backend(output_base->compositor);
@@ -1491,7 +1473,6 @@ drm_output_switch_mode(struct weston_output *output_base, struct weston_mode *mo
 	output->base.current_mode = &drm_mode->base;
 	output->base.current_mode->flags =
 		WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED;
-     output->base.buffer_mode = output->base.current_mode;
 
 	/* reset rendering stuff. */
 	drm_output_release_fb(output, output->current);
@@ -1699,7 +1680,7 @@ drm_output_add_mode(struct drm_output *output, const drmModeModeInfo *info)
 {
 	struct drm_mode *mode;
 	uint64_t refresh;
-
+    int r = 0;
 	mode = malloc(sizeof *mode);
 	if (mode == NULL)
 		return NULL;
@@ -1707,7 +1688,7 @@ drm_output_add_mode(struct drm_output *output, const drmModeModeInfo *info)
 	mode->base.flags = 0;
 	mode->base.width = info->hdisplay;
 	mode->base.height = info->vdisplay;
-
+    
 	/* Calculate higher precision (mHz) refresh rate */
 	refresh = (info->clock * 1000000LL / info->htotal +
 		   info->vtotal / 2) / info->vtotal;
@@ -1724,8 +1705,12 @@ drm_output_add_mode(struct drm_output *output, const drmModeModeInfo *info)
 
 	if (info->type & DRM_MODE_TYPE_PREFERRED)
 		mode->base.flags |= WL_OUTPUT_MODE_PREFERRED;
-
-	wl_list_insert(output->base.mode_list.prev, &mode->base.link);
+	 r = hdmi_check_mode(mode->base.width, mode->base.height, refresh/1000, 0, info->clock);
+    
+	weston_log("width=%d, height=%d, refresh=%d, clock=%d, r=%d\n",mode->base.width, mode->base.height,refresh/1000, info->clock, r);
+    if (r > 0 || mode->base.width==720) {
+	   wl_list_insert(output->base.mode_list.prev, &mode->base.link);
+    }
 
 	return mode;
 }
@@ -1884,16 +1869,11 @@ find_crtc_for_connector(struct drm_backend *b,
 		possible_crtcs = encoder->possible_crtcs;
 		drmModeFreeEncoder(encoder);
 		for (i = 0; i < resources->count_crtcs; i++) {
-			if (!(possible_crtcs & (1 << i))) 
-			{
+			if (!(possible_crtcs & (1 << i)))
 				continue;
-			}
 
-			/*if (drm_output_find_by_crtc(b, resources->crtcs[i]))
-			{
-				weston_log("++++++find by crtc error.\n");
+			if (drm_output_find_by_crtc(b, resources->crtcs[i]))
 				continue;
-			}*/
 
 			return i;
 		}
@@ -1913,10 +1893,8 @@ drm_output_init_egl(struct drm_output *output, struct drm_backend *b)
 	int i, flags, n_formats = 1;
     output->gbm_format = GBM_FORMAT_ARGB8888; 
 	output->gbm_surface = gbm_surface_create(b->gbm,
-					     output->base.buffer_mode->width,
-                      
-					     output->base.buffer_mode->height,
-               
+					     output->base.current_mode->width,
+					     output->base.current_mode->height,
 					     format[0],
 					     GBM_BO_USE_SCANOUT |
 					     GBM_BO_USE_RENDERING);
@@ -2294,7 +2272,6 @@ drm_output_choose_initial_mode(struct drm_backend *backend,
 	struct drm_mode *current = NULL;
 	struct drm_mode *configured = NULL;
 	struct drm_mode *best = NULL;
-	struct drm_mode *tmp_mode = NULL;
 	struct drm_mode *drm_mode;
 	drmModeModeInfo drm_modeline;
 	int32_t width = 0;
@@ -2321,38 +2298,24 @@ drm_output_choose_initial_mode(struct drm_backend *backend,
 	wl_list_for_each_reverse(drm_mode, &output->base.mode_list, base.link) {
 		if (width == drm_mode->base.width &&
 		    height == drm_mode->base.height &&
-		    (refresh == 0 || refresh == drm_mode->mode_info.vrefresh)) {
+		    (refresh == 0 || refresh == drm_mode->mode_info.vrefresh))
 			configured = drm_mode;
-			output->base.buffer_mode = configured;
-		}
 
 		if (memcmp(current_mode, &drm_mode->mode_info,
-			   sizeof *current_mode) == 0) {
+			   sizeof *current_mode) == 0)
 			current = drm_mode;
-			output->base.buffer_mode = current;
-		}
 
-		if (drm_mode->base.flags & WL_OUTPUT_MODE_PREFERRED) {
+		if (drm_mode->base.flags & WL_OUTPUT_MODE_PREFERRED)
 			preferred = drm_mode;
-			output->base.buffer_mode = preferred;
-		}
 
 		best = drm_mode;
-		output->base.buffer_mode = best;
-         if (drm_mode->base.width==1280 && drm_mode->base.height==720 && drm_mode->base.refresh>=50000) {
-		        tmp_mode = drm_mode;
-		 }
 	}
-          weston_log("---------------width=%d,height=%d\n",drm_mode->base.width , drm_mode->base.height);
+
 	if (current == NULL && current_mode->clock != 0) {
 		current = drm_output_add_mode(output, current_mode);
 		if (!current)
 			return NULL;
 	}
-	
-	if ((preferred && preferred->base.width>=1920) || (current && current->base.width>=1920) || (best && best->base.width>=1920)) {
-	   output->base.buffer_mode = tmp_mode;
-	} 
 
 	if (mode == WESTON_DRM_BACKEND_OUTPUT_CURRENT)
 		configured = current;
@@ -2595,9 +2558,10 @@ drm_output_destroy(struct weston_output *base)
 	weston_output_destroy(&output->base);
 
 	drmModeFreeConnector(output->connector);
-	 weston_log("drm_output_destroy exit.\n");
-	/*if (output->backlight)
-		backlight_destroy(output->backlight);*/
+
+	if (output->backlight)
+		backlight_destroy(output->backlight);
+
 	free(output);
 }
 
@@ -2753,7 +2717,7 @@ create_outputs(struct drm_backend *b, struct udev_device *drm_device)
 	drmModeConnector *connector;
 	drmModeRes *resources;
 	int i;
-    int hdmi_conn = 0;
+
 	resources = drmModeGetResources(b->drm.fd);
 	if (!resources) {
 		weston_log("drmModeGetResources failed\n");
@@ -2773,15 +2737,11 @@ create_outputs(struct drm_backend *b, struct udev_device *drm_device)
 
 		if (connector->connection == DRM_MODE_CONNECTED &&
 		    (b->connector == 0 ||
-		     connector->connector_id == b->connector) && hdmi_conn==0) {
+		     connector->connector_id == b->connector)) {
 			if (create_output_for_connector(b, resources,
 							connector, drm_device) < 0) {
 				drmModeFreeConnector(connector);
 				continue;
-			}
-			char *name = make_connector_name(connector);
-			if (strstr(name, "HDMI") > 0) {
-                hdmi_conn = 1;
 			}
 		} else {
 			drmModeFreeConnector(connector);
@@ -2805,10 +2765,7 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 	struct drm_output *output, *next;
 	uint32_t *connected;
 	int i;
-	int hdmi_flag = 0;
-    printf("+++update_outputs\n");
     Hdmi_Info_list_t list;
-	memset(&list, 0, sizeof(Hdmi_Info_list_t));
 	resources = drmModeGetResources(b->drm.fd);
 	if (!resources) {
 		weston_log("drmModeGetResources failed\n");
@@ -2861,19 +2818,12 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 				break;
 			}
 		}
-        if (strstr(output->base.name, "HDMI") > 0) {
-			if (disconnected == true) {
-				hdmi_flag = 1;
-			} else {
-				hdmi_flag = 2;
-			}
-		}
+
 		if (!disconnected)
 			continue;
 
 		weston_log("connector %d disconnected\n", output->connector_id);
 		drm_output_destroy(&output->base);
-		weston_log("drm_output_destroy end0\n");
 	}
 
 	wl_list_for_each_safe(output, next, &b->compositor->pending_output_list,
@@ -2886,41 +2836,16 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 				break;
 			}
 		}
-		
-		if (strstr(output->base.name, "HDMI") > 0) {
-		   if (disconnected == true) {
-		       hdmi_flag = 1;
-		   	} else {
-               hdmi_flag = 2;
-			}
-		}
-				
+
 		if (!disconnected)
 			continue;
 
 		weston_log("connector %d disconnected\n", output->connector_id);
 		drm_output_destroy(&output->base);
-		weston_log("drm_output_destroy end1\n");
 	}
 
 	free(connected);
 	drmModeFreeResources(resources);
-     
-	if (hdmi_flag > 0) {
-        
-		/*int tv_status_fd = open("/sys/class/drm/card0/card0-TV-1/status", O_RDWR);
-		if (tv_status_fd > 0) {
-			if (hdmi_flag == 1) {
-				weston_log("#####enable cvbs.\n");
-				write(tv_status_fd, "on", 2);
-			} else if (hdmi_flag == 2){
-				weston_log("#####disable cvbs.\n");
-				write(tv_status_fd, "off", 3);
-			}
-			close(tv_status_fd);
-		}*/
-		
-	}
 }
 
 static int
@@ -2945,7 +2870,7 @@ udev_drm_event(int fd, uint32_t mask, void *data)
 {
 	struct drm_backend *b = data;
 	struct udev_device *event;
-    printf("++++++udev_drm_event\n");
+
 	event = udev_monitor_receive_device(b->udev_monitor);
 	if (udev_event_is_hotplug(b, event))
 		update_outputs(b, event);

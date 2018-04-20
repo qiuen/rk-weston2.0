@@ -130,10 +130,10 @@ static void weston_mode_switch_finish(struct weston_output *output,
 	wl_resource_for_each(resource, &output->resource_list) {
 		if (mode_changed) {
 			wl_output_send_mode(resource,
-					    output->buffer_mode->flags,
-					    output->buffer_mode->width,
-					    output->buffer_mode->height,
-					    output->buffer_mode->refresh);
+					    output->current_mode->flags,
+					    output->current_mode->width,
+					    output->current_mode->height,
+					    output->current_mode->refresh);
 		}
 
 		version = wl_resource_get_version(resource);
@@ -4174,7 +4174,7 @@ bind_output(struct wl_client *client,
 	struct weston_output *output = data;
 	struct weston_mode *mode;
 	struct wl_resource *resource;
-    int    flag_4k = 0;
+
 	resource = wl_resource_create(client, &wl_output_interface,
 				      version, id);
 	if (resource == NULL) {
@@ -4196,27 +4196,8 @@ bind_output(struct wl_client *client,
 	if (version >= WL_OUTPUT_SCALE_SINCE_VERSION)
 		wl_output_send_scale(resource,
 				     output->current_scale);
-	
-		wl_list_for_each (mode, &output->mode_list, link) {
-			if (strstr(output->name, "HDMI") > 0) {
-				
-				if (mode->width>=1920 && mode->height>=1080) {
-			       flag_4k = 1;
-				   break;
-				} 
-			}
-		}
-    
 
 	wl_list_for_each (mode, &output->mode_list, link) {
-		if (strstr(output->name, "HDMI") > 0&& flag_4k>0) {
-			
-			if (mode->width==1280 && mode->height==720) {
-	           mode->flags = 3;  
-			} else {
-	           mode->flags = 0;
-			}
-		}
 		wl_output_send_mode(resource,
 				    mode->flags,
 				    mode->width,
@@ -4318,10 +4299,10 @@ weston_output_transform_scale_init(struct weston_output *output, uint32_t transf
 	output->transform = transform;
 	output->native_scale = scale;
 	output->current_scale = scale;
-   
+
 	convert_size_by_transform_scale(&output->width, &output->height,
-					output->buffer_mode->width,
-					output->buffer_mode->height,
+					output->current_mode->width,
+					output->current_mode->height,
 					transform, scale);
 }
 
