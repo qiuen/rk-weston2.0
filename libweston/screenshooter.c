@@ -234,22 +234,20 @@ weston_displayconfig_getresource2(struct weston_output *output,
 	uint8_t *d = wl_shm_buffer_get_data(buffer->shm_buffer);
 	struct weston_mode *mode;
 	struct wl_list mode_list = output->mode_list;
-	struct wl_list link = output->link;
+	//struct wl_list link = output->link;
 	HdmiInfos_t hdminfos;
         int i = 0;
 	memset(&hdminfos, 0, sizeof(HdmiInfos_t));
 	wl_list_for_each (mode,  &mode_list, link) {
-         weston_log("========width=%d,height=%d,refresh=%d,flag=%d\n",mode->width,mode->height,mode->refresh,mode->flags); 
-         if (mode->width != 0) {
+            weston_log("========width=%d,height=%d,refresh=%d,flag=%d\n",mode->width,mode->height,mode->refresh,mode->flags); 
+			if (mode->width==0 || mode->height==0) {
+				break;
+			}
 			hdminfos.hdmi_info[i].xres = mode->width;
 			hdminfos.hdmi_info[i].yres = mode->height;
 			hdminfos.hdmi_info[i].refresh = mode->refresh;
 			hdminfos.hdmi_info[i].interlaced = 0;
             i++;
-		    if (i > 80) {
-              break;
-			}
-		 }
 	}
 	hdminfos.count = i;
 	memcpy(d, &hdminfos, sizeof(HdmiInfos_t));
