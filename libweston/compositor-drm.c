@@ -1680,7 +1680,8 @@ drm_output_add_mode(struct drm_output *output, const drmModeModeInfo *info)
 {
 	struct drm_mode *mode;
 	uint64_t refresh;
-    int r = 0;
+	int r = 0;
+        int interlace = 0;
 	mode = malloc(sizeof *mode);
 	if (mode == NULL)
 		return NULL;
@@ -1702,13 +1703,17 @@ drm_output_add_mode(struct drm_output *output, const drmModeModeInfo *info)
 
 	mode->base.refresh = refresh;
 	mode->mode_info = *info;
-
+        if (info->flags==4122 || info->flags==4117) {
+          interlace = 1;
+	} else {
+          interlace = 0;
+	}
 	if (info->type & DRM_MODE_TYPE_PREFERRED)
 		mode->base.flags |= WL_OUTPUT_MODE_PREFERRED;
-	 r = hdmi_check_mode(mode->base.width, mode->base.height, refresh/1000, 0, info->clock);
+	 r = hdmi_check_mode(mode->base.width, mode->base.height, refresh/1000, interlace, info->clock);
     
 	weston_log("width=%d, height=%d, refresh=%d, clock=%d, r=%d\n",mode->base.width, mode->base.height,refresh/1000, info->clock, r);
-    if (r > 0 || mode->base.width==720) {
+    if (r > 0) {
 	   wl_list_insert(output->base.mode_list.prev, &mode->base.link);
     }
 
