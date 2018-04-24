@@ -1713,7 +1713,7 @@ drm_output_add_mode(struct drm_output *output, const drmModeModeInfo *info)
 	 r = hdmi_check_mode(mode->base.width, mode->base.height, refresh/1000, interlace, info->clock);
     
 	weston_log("width=%d, height=%d, refresh=%d, clock=%d, r=%d\n",mode->base.width, mode->base.height,refresh/1000, info->clock, r);
-    if (r > 0) {
+    if (r > 0 || output->connector->connector_type == DRM_MODE_CONNECTOR_TV) {
 	   wl_list_insert(output->base.mode_list.prev, &mode->base.link);
     }
 
