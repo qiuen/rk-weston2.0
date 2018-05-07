@@ -2782,6 +2782,8 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 	struct drm_output *output, *next;
 	uint32_t *connected;
 	int i;
+	int hdmi_flag = 0;
+	int conn_count = 0;
     Hdmi_Info_list_t list;
 	resources = drmModeGetResources(b->drm.fd);
 	if (!resources) {
@@ -2812,8 +2814,9 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 			drmModeFreeConnector(connector);
 			continue;
 		}
-
 		connected[i] = connector_id;
+		conn_count++;
+#if 0
         hdmi_get_resolution(&list);	
 		if (drm_output_find_by_connector(b, connector_id)) {
 			drmModeFreeConnector(connector);
@@ -2823,6 +2826,7 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 		create_output_for_connector(b, resources,
 					    connector, drm_device);
 		weston_log("connector %d connected\n", connector_id);
+#endif
 	}
 
 	wl_list_for_each_safe(output, next, &b->compositor->output_list,
@@ -2835,8 +2839,15 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 				break;
 			}
 		}
+		
+		if (conn_count == 2 && output->connector->connector_type == DRM_MODE_CONNECTOR_TV) {//cvbs and hdmi are all connect,let cvbs disconnet
+			disconnected = true;
+		}
 
 		if (!disconnected)
+			continue;
+
+		if (!output)
 			continue;
 
 		weston_log("connector %d disconnected\n", output->connector_id);
@@ -2853,6 +2864,10 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 				break;
 			}
 		}
+      
+		if (conn_count == 2 && output->connector->connector_type == DRM_MODE_CONNECTOR_TV) {//cvbs and hdmi are all connect,let cvbs disconnet
+			disconnected = true;
+		}
 
 		if (!disconnected)
 			continue;
@@ -2860,7 +2875,24 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 		weston_log("connector %d disconnected\n", output->connector_id);
 		drm_output_destroy(&output->base);
 	}
-
+	
+	for (i = 0; i < resources->count_connectors; i++) {
+		if (connected[i] > 0) {
+			hdmi_get_resolution(&list);	//update mode list
+			connector = drmModeGetConnector(b->drm.fd, connected[i]);
+			if (connector == NULL)
+				continue;
+			if (drm_output_find_by_connector(b, connected[i])) {
+				drmModeFreeConnector(connector);
+				continue;
+			}
+			weston_log(">>>>create_output_for_connector\n");
+			create_output_for_connector(b, resources,
+										connector, drm_device);
+			weston_log("connector %d connected\n", connected[i]);
+		}
+	}
+    
 	free(connected);
 	drmModeFreeResources(resources);
 }
