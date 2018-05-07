@@ -4301,8 +4301,10 @@ weston_output_transform_scale_init(struct weston_output *output, uint32_t transf
 	output->current_scale = scale;
 
 	convert_size_by_transform_scale(&output->width, &output->height,
-					output->current_mode->width,
-					output->current_mode->height,
+					//output->current_mode->width,
+					1280,
+					//output->current_mode->height,
+					720,
 					transform, scale);
 }
 

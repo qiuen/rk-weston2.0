@@ -728,6 +728,7 @@ drm_output_repaint(struct weston_output *output_base,
 			goto err_pageflip;
 		}
 		output_base->set_dpms(output_base, WESTON_DPMS_ON);
+		UpdateDisplaySize(0, 0, 1280, 720, 0, 0, output->base.current_mode->width, output->base.current_mode->height);
 	}
 
 	if (drmModePageFlip(backend->drm.fd, output->crtc_id,
@@ -1898,8 +1899,10 @@ drm_output_init_egl(struct drm_output *output, struct drm_backend *b)
 	int i, flags, n_formats = 1;
     output->gbm_format = GBM_FORMAT_ARGB8888; 
 	output->gbm_surface = gbm_surface_create(b->gbm,
-					     output->base.current_mode->width,
-					     output->base.current_mode->height,
+					    // output->base.current_mode->width,
+						1280,
+					     //output->base.current_mode->height,
+						 720,
 					     format[0],
 					     GBM_BO_USE_SCANOUT |
 					     GBM_BO_USE_RENDERING);
