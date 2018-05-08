@@ -120,6 +120,8 @@ struct drm_backend {
 	int32_t cursor_height;
 
 	uint32_t connector;
+	int      fake_width;
+	int      fake_height;
 };
 
 struct drm_mode {
@@ -213,6 +215,23 @@ struct drm_sprite {
 static struct gl_renderer_interface *gl_renderer;
 
 static const char default_seat[] = "seat0";
+
+static void 
+get_fake_size(int *width, int *height) {
+    
+	int fake_width = 0;
+	int fake_height = 0;
+	int refresh = 0;
+	char *fake_size = getenv("WAYLAND_FAKE_UI_SIZE");
+	if (fake_size != NULL) {
+		sscanf(fake_size, "%dx%d@%d", &fake_width, &fake_height, &refresh);
+		*width = fake_width;
+		*height = fake_height;
+		weston_log("drm_output_init_egl fake_width=%d,fake_height=%d\n",width, height);
+	}
+    return;
+}
+
 
 static inline struct drm_output *
 to_drm_output(struct weston_output *base)
@@ -728,7 +747,7 @@ drm_output_repaint(struct weston_output *output_base,
 			goto err_pageflip;
 		}
 		output_base->set_dpms(output_base, WESTON_DPMS_ON);
-		UpdateDisplaySize(0, 0, 1280, 720, 0, 0, output->base.current_mode->width, output->base.current_mode->height);
+        UpdateDisplaySize(0, 0, output->base.fake_width, output->base.fake_height, 0, 0, output->base.current_mode->width, output->base.current_mode->height);
 	}
 
 	if (drmModePageFlip(backend->drm.fd, output->crtc_id,
@@ -1900,9 +1919,9 @@ drm_output_init_egl(struct drm_output *output, struct drm_backend *b)
     output->gbm_format = GBM_FORMAT_ARGB8888; 
 	output->gbm_surface = gbm_surface_create(b->gbm,
 					    // output->base.current_mode->width,
-						1280,
+						 output->base.fake_width,
 					     //output->base.current_mode->height,
-						 720,
+						 output->base.fake_height,
 					     format[0],
 					     GBM_BO_USE_SCANOUT |
 					     GBM_BO_USE_RENDERING);
@@ -2302,6 +2321,11 @@ drm_output_choose_initial_mode(struct drm_backend *backend,
 					   modeline, output->base.name);
 			}
 		}
+		
+		if (width>0 && height>0) {
+			output->base.fake_width = width;
+			output->base.fake_height = height;
+		} 
 	}
 
 	wl_list_for_each_reverse(drm_mode, &output->base.mode_list, base.link) {
@@ -2408,6 +2432,24 @@ drm_output_set_mode(struct weston_output *base,
 	current = drm_output_choose_initial_mode(b, output, mode, modeline, &crtc_mode);
 	if (!current)
 		goto err_free;
+
+    if (output->base.fake_width!=0 && output->base.fake_height!=0) {
+        b->fake_width = output->base.fake_width;
+		b->fake_height = output->base.fake_height;
+	} else {
+        output->base.fake_width = b->fake_width;
+		output->base.fake_height = b->fake_height;
+	}
+	
+	int fake_width = 0;
+	int fake_height = 0;
+	get_fake_size(&fake_width, &fake_height);
+
+	if (fake_width!=output->base.fake_width && fake_height!=output->base.fake_height) {
+         weston_log("!!!!!!!!please check weston.ini config, weather set the mode size is the same as the WAYLAND_FAKE_UI_SIZE env");
+		 goto err_free; 
+	}
+	
 
 	output->base.current_mode = &current->base;
 	output->base.current_mode->flags |= WL_OUTPUT_MODE_CURRENT;

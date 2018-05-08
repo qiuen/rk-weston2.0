@@ -950,8 +950,8 @@ draw_output_borders(struct weston_output *output,
 	left = &go->borders[GL_RENDERER_BORDER_LEFT];
 	right = &go->borders[GL_RENDERER_BORDER_RIGHT];
 
-	full_width = 1280 + left->width + right->width;
-	full_height = 720 + top->height + bottom->height;
+	full_width = output->fake_width+ left->width + right->width;
+	full_height = output->fake_height  + top->height + bottom->height;
 	glDisable(GL_BLEND);
 	use_shader(gr, shader);
 
@@ -973,11 +973,11 @@ draw_output_borders(struct weston_output *output,
 	if (border_status & BORDER_LEFT_DIRTY)
 		draw_output_border_texture(go, GL_RENDERER_BORDER_LEFT,
 					   0, top->height,
-					   left->width, 720);
+					   left->width, output->fake_height);
 	if (border_status & BORDER_RIGHT_DIRTY)
 		draw_output_border_texture(go, GL_RENDERER_BORDER_RIGHT,
 					   full_width - right->width, top->height,
-					   right->width, 720);
+					   right->width, output->fake_height);
 	if (border_status & BORDER_BOTTOM_DIRTY)
 		draw_output_border_texture(go, GL_RENDERER_BORDER_BOTTOM,
 					   0, full_height - bottom->height,
@@ -1000,9 +1000,8 @@ output_get_border_damage(struct weston_output *output,
 	bottom = &go->borders[GL_RENDERER_BORDER_BOTTOM];
 	left = &go->borders[GL_RENDERER_BORDER_LEFT];
 	right = &go->borders[GL_RENDERER_BORDER_RIGHT];
-
-	full_width = 1280 + left->width + right->width;
-	full_height = 720 + top->height + bottom->height;
+	full_width = output->fake_width + left->width + right->width;
+	full_height = output->fake_height + top->height + bottom->height;
 	
 
 	if (border_status & BORDER_TOP_DIRTY)
@@ -1012,11 +1011,11 @@ output_get_border_damage(struct weston_output *output,
 	if (border_status & BORDER_LEFT_DIRTY)
 		pixman_region32_union_rect(damage, damage,
 					   0, top->height,
-					   left->width, 720);
+					   left->width, output->fake_height);
 	if (border_status & BORDER_RIGHT_DIRTY)
 		pixman_region32_union_rect(damage, damage,
 					   full_width - right->width, top->height,
-					   right->width, 720);
+					   right->width, output->fake_height);
 	if (border_status & BORDER_BOTTOM_DIRTY)
 		pixman_region32_union_rect(damage, damage,
 					   0, full_height - bottom->height,
@@ -1108,22 +1107,26 @@ gl_renderer_repaint_output(struct weston_output *output,
 		return;
 
 	/* Calculate the viewport */
-	glViewport(0, //go->borders[GL_RENDERER_BORDER_LEFT].width,
-		   0,  //go->borders[GL_RENDERER_BORDER_BOTTOM].height,
-		   1280,//output->current_mode->width,
-		   720 //output->current_mode->height
+	glViewport(go->borders[GL_RENDERER_BORDER_LEFT].width,
+		    go->borders[GL_RENDERER_BORDER_BOTTOM].height,
+		    output->fake_width,//output->current_mode->width,
+		    output->fake_height //output->current_mode->height
 		   );
 
 	/* Calculate the global GL matrix */
 	go->output_matrix = output->matrix;
 
 	weston_matrix_translate(&go->output_matrix,
-				-(1280 / 2.0),
-				-(720 / 2.0), 0);
+				-(output->fake_width / 2.0),
+				-(output->fake_height / 2.0), 0);
 	weston_matrix_scale(&go->output_matrix,
-			    2.0 / 1280,
-			    -2.0 / 720, 1);
-
+			    2.0 / output->fake_width,
+			    -2.0 / output->fake_height, 1);
+   	//weston_log("*********************************************\n");
+	//weston_log("%.4f  %.4f  %.4f %.4f\n", go->output_matrix.d[0], go->output_matrix.d[1], go->output_matrix.d[2],go->output_matrix.d[3]);
+   // weston_log("%.4f  %.4f  %.4f %.4f\n", go->output_matrix.d[4], go->output_matrix.d[5], go->output_matrix.d[6],go->output_matrix.d[7]);
+	//weston_log("%.4f  %.4f  %.4f %.4f\n", go->output_matrix.d[8], go->output_matrix.d[9], go->output_matrix.d[10],go->output_matrix.d[11]);
+	
 
 	/* if debugging, redraw everything outside the damage to clean up
 	 * debug lines from the previous draw on this buffer:
@@ -1177,7 +1180,7 @@ gl_renderer_repaint_output(struct weston_output *output,
 		egl_damage = malloc(nrects * 4 * sizeof(EGLint));
 
 		buffer_height = go->borders[GL_RENDERER_BORDER_TOP].height +
-				720 +
+				output->fake_height +
 				go->borders[GL_RENDERER_BORDER_BOTTOM].height;
 
 		d = egl_damage;

@@ -223,6 +223,9 @@ struct weston_output {
 
 	int (*enable)(struct weston_output *output);
 	int (*disable)(struct weston_output *output);
+	int fake_width;
+	int fake_height;
+	
 };
 
 enum weston_pointer_motion_mask {

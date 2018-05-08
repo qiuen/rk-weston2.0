@@ -4299,12 +4299,13 @@ weston_output_transform_scale_init(struct weston_output *output, uint32_t transf
 	output->transform = transform;
 	output->native_scale = scale;
 	output->current_scale = scale;
-
+	output->width = output->fake_width;
+	output->height = output->fake_height;
 	convert_size_by_transform_scale(&output->width, &output->height,
 					//output->current_mode->width,
-					1280,
+					output->fake_width,
 					//output->current_mode->height,
-					720,
+					output->fake_height,
 					transform, scale);
 }
 
