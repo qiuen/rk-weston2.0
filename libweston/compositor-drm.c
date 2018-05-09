@@ -2444,7 +2444,10 @@ drm_output_set_mode(struct weston_output *base,
 	int fake_width = 0;
 	int fake_height = 0;
 	get_fake_size(&fake_width, &fake_height);
-
+	if (output->base.fake_width==0 || output->base.fake_height==0) {
+        output->base.fake_width =  fake_width;
+		output->base.fake_height = fake_height;
+	}
 	if (fake_width!=output->base.fake_width && fake_height!=output->base.fake_height) {
          weston_log("!!!!!!!!please check weston.ini config, weather set the mode size is the same as the WAYLAND_FAKE_UI_SIZE env");
 		 goto err_free; 
