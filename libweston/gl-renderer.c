@@ -48,7 +48,7 @@
 #include "shared/helpers.h"
 #include "shared/platform.h"
 #include "weston-egl-ext.h"
-#define ENABLE_RKDEBUG 1
+#define ENABLE_RKDEBUG 0
 struct gl_shader {
 	GLuint program;
 	GLuint vertex_shader, fragment_shader;
