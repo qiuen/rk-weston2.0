@@ -1311,8 +1311,13 @@ drm_output_set_cursor(struct drm_output *output)
 	/* From global to output space, output transform is guaranteed to be
 	 * NORMAL by drm_output_prepare_cursor_view().
 	 */
-	x = (x - output->base.x) * output->base.current_scale;
-	y = (y - output->base.y) * output->base.current_scale;
+	int xres = 0;
+	int yres = 0;
+    hdmi_get_current_mode(&xres, &yres);
+    float w_scale = (float)xres/output->base.fake_width;
+    float h_scale = (float)yres/output->base.fake_height;
+	x = (x - output->base.x) * output->base.current_scale*w_scale;
+	y = (y - output->base.y) * output->base.current_scale*h_scale;
 
 	if (output->cursor_plane.x != x || output->cursor_plane.y != y) {
 		if (drmModeMoveCursor(b->drm.fd, output->crtc_id, x, y)) {
