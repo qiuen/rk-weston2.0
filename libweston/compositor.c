@@ -4025,7 +4025,11 @@ weston_compositor_wake(struct weston_compositor *compositor)
 	 * signal because that may try to schedule a repaint which
 	 * will not work if the compositor is still sleeping */
 	compositor->state = WESTON_COMPOSITOR_ACTIVE;
-
+	struct weston_output *output;
+	wl_list_for_each(output, &compositor->output_list, link) {
+		weston_output_schedule_repaint_reset(output);
+		weston_output_schedule_repaint(output);
+	}
 	switch (old_state) {
 	case WESTON_COMPOSITOR_SLEEPING:
 	case WESTON_COMPOSITOR_IDLE:
