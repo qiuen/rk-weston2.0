@@ -78,7 +78,7 @@
 #ifndef GBM_BO_USE_CURSOR
 #define GBM_BO_USE_CURSOR GBM_BO_USE_CURSOR_64X64
 #endif
-
+pthread_mutex_t mutex;  
 struct drm_backend {
 	struct weston_backend base;
 	struct weston_compositor *compositor;
@@ -227,7 +227,7 @@ get_fake_size(int *width, int *height) {
 		sscanf(fake_size, "%dx%d@%d", &fake_width, &fake_height, &refresh);
 		*width = fake_width;
 		*height = fake_height;
-		weston_log("drm_output_init_egl fake_width=%d,fake_height=%d\n",width, height);
+		weston_log("drm_output_init_egl fake_width=%d,fake_height=%d\n",fake_width, fake_height);
 	}
     return;
 }
@@ -250,6 +250,9 @@ drm_output_set_cursor(struct drm_output *output);
 
 static void
 drm_output_update_msc(struct drm_output *output, unsigned int seq);
+
+static void
+destroy_sprites(struct drm_backend *backend);
 
 static int
 drm_sprite_crtc_supported(struct drm_output *output, struct drm_sprite *sprite)
@@ -726,14 +729,21 @@ drm_output_repaint(struct weston_output *output_base,
 	struct drm_sprite *s;
 	struct drm_mode *mode;
 	int ret = 0;
-    
-	if (output->disable_pending || output->destroy_pending)
+
+    pthread_mutex_lock(mutex); 
+	if (output->disable_pending || output->destroy_pending) {
+        pthread_mutex_unlock(mutex); 
+
 		return -1;
+	}
 
 	if (!output->next)
 		drm_output_render(output, damage);
-	if (!output->next)
+	if (!output->next) {
+	   pthread_mutex_unlock(mutex); 
+
 		return -1;
+	}
 
 	mode = container_of(output->base.current_mode, struct drm_mode, base);
 	if (!output->current ||
@@ -804,11 +814,12 @@ drm_output_repaint(struct weston_output *output_base,
 		s->output = output;
 		output->vblank_pending = 1;
 	}
-
+    pthread_mutex_unlock(mutex); 
 	return 0;
 
 err_pageflip:
 	output->cursor_view = NULL;
+	pthread_mutex_unlock(mutex); 
 	if (output->next) {
 		drm_output_release_fb(output, output->next);
 		output->next = NULL;
@@ -1568,6 +1579,7 @@ init_drm(struct drm_backend *b, struct udev_device *device)
 	b->drm.filename = strdup(filename);
 	
     ret = init_hdmi_set(fd);
+	pthread_mutex_init(&mutex, NULL);
 	
 	weston_log("call init_hdmi_set ret=%d\n",ret);
 
@@ -1912,6 +1924,7 @@ find_crtc_for_connector(struct drm_backend *b,
 	return -1;
 }
 
+static int first_flag = 0;
 /* Init output state that depends on gl or gbm */
 static int
 drm_output_init_egl(struct drm_output *output, struct drm_backend *b)
@@ -1949,16 +1962,17 @@ drm_output_init_egl(struct drm_output *output, struct drm_backend *b)
 	}
 
 	flags = GBM_BO_USE_CURSOR | GBM_BO_USE_WRITE;
-
-	for (i = 0; i < 2; i++) {
-		if (output->gbm_cursor_bo[i])
-			continue;
-
-		output->gbm_cursor_bo[i] =
-			gbm_bo_create(b->gbm, b->cursor_width, b->cursor_height,
-				GBM_FORMAT_ARGB8888, flags);
-	}
-
+    if (first_flag == 0)  {
+		for (i = 0; i < 2; i++) {
+			if (output->gbm_cursor_bo[i])
+				continue;
+	       
+			output->gbm_cursor_bo[i] =
+				gbm_bo_create(b->gbm, b->cursor_width, b->cursor_height,
+					GBM_FORMAT_ARGB8888, flags);
+		}
+		first_flag = 1;
+    }
 	if (output->gbm_cursor_bo[0] == NULL || output->gbm_cursor_bo[1] == NULL) {
 		weston_log("cursor buffers unavailable, using gl cursors\n");
 		b->cursors_are_broken = 1;
@@ -2629,6 +2643,13 @@ drm_output_destroy(struct weston_output *base)
 	if (output->backlight)
 		backlight_destroy(output->backlight);
 
+    if (output->next) {
+		drm_output_release_fb(output, output->next);
+    }	
+	
+	if (output->current) {
+	    drm_output_release_fb(output, output->current);
+	}
 	free(output);
 }
 
@@ -2834,13 +2855,13 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 	int i;
 	int hdmi_flag = 0;
 	int conn_count = 0;
-    Hdmi_Info_list_t list;
+    Hdmi_Info_list_t hdmi_list;
 	resources = drmModeGetResources(b->drm.fd);
 	if (!resources) {
 		weston_log("drmModeGetResources failed\n");
 		return;
 	}
-
+    hdmi_get_resolution(&hdmi_list);
 	connected = calloc(resources->count_connectors, sizeof(uint32_t));
 	if (!connected) {
 		drmModeFreeResources(resources);
@@ -2928,7 +2949,7 @@ update_outputs(struct drm_backend *b, struct udev_device *drm_device)
 	
 	for (i = 0; i < resources->count_connectors; i++) {
 		if (connected[i] > 0) {
-			hdmi_get_resolution(&list);	//update mode list
+		//	hdmi_get_resolution(&hdmi_list);	//update mode list
 			connector = drmModeGetConnector(b->drm.fd, connected[i]);
 			if (connector == NULL)
 				continue;
@@ -2967,14 +2988,15 @@ udev_event_is_hotplug(struct drm_backend *b, struct udev_device *device)
 static int
 udev_drm_event(int fd, uint32_t mask, void *data)
 {
+	pthread_mutex_lock(mutex); 
 	struct drm_backend *b = data;
 	struct udev_device *event;
 
 	event = udev_monitor_receive_device(b->udev_monitor);
 	if (udev_event_is_hotplug(b, event))
 		update_outputs(b, event);
-	udev_device_unref(event);
-
+	pthread_mutex_unlock(mutex); 
+	
 	return 1;
 }
 
