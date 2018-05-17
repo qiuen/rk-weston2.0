@@ -93,9 +93,22 @@ enum weston_led {
 };
 
 struct weston_mode {
-	uint32_t flags;
-	int32_t width, height;
-	uint32_t refresh;
+	 uint32_t flags;
+	 int32_t width, height;
+	 uint32_t refresh;
+	 uint32_t interlace;
+	 int clock;		/* in kHz */   
+	 int hdisplay;    
+	 int hsync_start;    
+	 int hsync_end;    
+	 int htotal;   
+	 int vdisplay;    
+	 int vsync_start;   
+	 int vsync_end;    
+	 int vtotal;    
+	 int vrefresh;    
+	 int vscan;    
+	 unsigned int vflags;
 	struct wl_list link;
 };
 

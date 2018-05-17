@@ -1487,9 +1487,10 @@ drm_output_switch_mode(struct weston_output *output_base, struct weston_mode *mo
 	}
 	
 	output = to_drm_output(output_base);
-   	int ret = hdmi_set_resolution(mode->width, mode->height, mode->refresh/1000, mode->flags);
+	weston_log("drm_output_switch_mode:width=%d,height=%d, refresh=%d, interlace=%d\n",mode->width, mode->height, mode->refresh/1000, mode->interlace);
+   	int ret = hdmi_set_resolution(mode->width, mode->height, mode->vrefresh, mode->interlace);
 	
-	UpdateDisplaySize(0, 0, output->base.current_mode->width, output->base.current_mode->height, 0, 0, mode->width, mode->height);
+	UpdateDisplaySize(0, 0, output->base.fake_width, output->base.fake_height, 0, 0, mode->width, mode->height);
 	
 	return 0;
 	b = to_drm_backend(output_base->compositor);
@@ -1726,13 +1727,27 @@ drm_output_add_mode(struct drm_output *output, const drmModeModeInfo *info)
 	mode->base.flags = 0;
 	mode->base.width = info->hdisplay;
 	mode->base.height = info->vdisplay;
-    
+    mode->base.interlace = 0;
+	mode->base.clock = info->clock;		/* in kHz */   
+	mode->base.hdisplay = info->hdisplay;    
+	mode->base.hsync_start = info->hsync_start;    
+	mode->base.hsync_end = info->hsync_end;    
+	mode->base.htotal = info->htotal;   
+	mode->base.vdisplay = info->vdisplay;    
+	mode->base.vsync_start = info->vsync_start;   
+	mode->base.vsync_end = info->vsync_end;    
+	mode->base.vtotal = info->vtotal;    
+	mode->base.vrefresh = info->vrefresh;    
+	mode->base.vscan = info->vscan;    
+	mode->base.vflags = info->flags;
 	/* Calculate higher precision (mHz) refresh rate */
 	refresh = (info->clock * 1000000LL / info->htotal +
 		   info->vtotal / 2) / info->vtotal;
 
-	if (info->flags & DRM_MODE_FLAG_INTERLACE)
+	if (info->flags & DRM_MODE_FLAG_INTERLACE) {
+		mode->base.interlace = 1;
 		refresh *= 2;
+	}
 	if (info->flags & DRM_MODE_FLAG_DBLSCAN)
 		refresh /= 2;
 	if (info->vscan > 1)
@@ -1740,16 +1755,12 @@ drm_output_add_mode(struct drm_output *output, const drmModeModeInfo *info)
 
 	mode->base.refresh = refresh;
 	mode->mode_info = *info;
-        if (info->flags==4122 || info->flags==4117) {
-          interlace = 1;
-	} else {
-          interlace = 0;
-	}
 	if (info->type & DRM_MODE_TYPE_PREFERRED)
 		mode->base.flags |= WL_OUTPUT_MODE_PREFERRED;
-	 r = hdmi_check_mode(mode->base.width, mode->base.height, refresh/1000, interlace, info->clock);
+	 r = hdmi_check_mode(mode->base.width, mode->base.height, mode->base.vrefresh, mode->base.interlace, info->clock);
     
-	weston_log("width=%d, height=%d, refresh=%d, clock=%d, r=%d\n",mode->base.width, mode->base.height,refresh/1000, info->clock, r);
+	weston_log("width=%d, height=%d, refresh=%d, clock=%d, r=%d, info->flags=%d,%d\n",\
+		           mode->base.width, mode->base.height,mode->base.vrefresh, info->clock, r,info->flags, info->flags&DRM_MODE_FLAG_INTERLACE);
     if (r > 0 || output->connector->connector_type == DRM_MODE_CONNECTOR_TV) {
 	   wl_list_insert(output->base.mode_list.prev, &mode->base.link);
     }

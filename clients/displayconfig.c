@@ -362,9 +362,9 @@ set_hdmi_mode(int width, int height, int refresh, int interlaced, int reserved) 
 	wl_list_for_each(output, &output_list, link) {
 		for (int i=0; i<_HdmiInfos.count; i++) {
 			printf("i=%d, width=%d,height=%d,refresh=%d\n",i,_HdmiInfos.hdmi_info[i].xres,_HdmiInfos.hdmi_info[i].yres,_HdmiInfos.hdmi_info[i].refresh);
-			if (_HdmiInfos.hdmi_info[i].xres==width && _HdmiInfos.hdmi_info[i].yres==height && _HdmiInfos.hdmi_info[i].refresh==refresh) {
+			if (_HdmiInfos.hdmi_info[i].xres==width && _HdmiInfos.hdmi_info[i].yres==height && _HdmiInfos.hdmi_info[i].refresh==refresh && _HdmiInfos.hdmi_info[i].interlaced==interlaced) {
 				weston_display_coinfig_SetMode(displayconfig, output->output, _HdmiInfos.hdmi_info[i].xres, \
-					                             _HdmiInfos.hdmi_info[i].yres, _HdmiInfos.hdmi_info[i].refresh, 0, 0);
+					                             _HdmiInfos.hdmi_info[i].yres, _HdmiInfos.hdmi_info[i].refresh, interlaced, 0);
 
 				break;
 			}

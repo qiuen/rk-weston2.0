@@ -191,16 +191,16 @@ WL_EXPORT int weston_displayconfig_setmode(struct weston_output *output,
 			int32_t reserved,weston_screenshooter_done_func_t done, void *data) {
 
 	 
-	weston_log(">>>enter weston_displayconfig_setmode,width=%d,height=%d,refresh=%d\n",width, height, refresh);
+//	weston_log(">>>enter weston_displayconfig_setmode,width=%d,height=%d,refresh=%d\n",width, height, refresh);
 	struct weston_mode *mode;
 	struct wl_list mode_list = output->mode_list;
 	struct wl_list link = output->link;
 	wl_list_for_each (mode,  &mode_list, link) {
 		
-		 weston_log("=======%s,switch_mode,width=%d,height=%d,refresh=%d\n",__FUNCTION__,mode->width, mode->height, mode->refresh);
-		 if (mode->width == width && mode->height == height && mode->refresh==refresh) {
-             weston_log("%s,switch_mode,width=%d,height=%d,refresh=%d,flag=%d\n",__FUNCTION__,width, height, refresh,flag);
-			 mode->flags = flag;
+	//	 weston_log("=======%s,switch_mode,width=%d,height=%d,refresh=%d\n",__FUNCTION__,mode->width, mode->height, mode->refresh);
+		 if (mode->width == width && mode->height == height && mode->vrefresh==refresh && flag==mode->interlace) {
+                         weston_log("%s,switch_mode,width=%d,height=%d,refresh=%d,flag=%d\n",__FUNCTION__,width, height, refresh,flag);
+			 //mode->flags = flag;
              output->switch_mode(output, mode);
 			 done(data, 0);
 			 break;
@@ -240,13 +240,13 @@ weston_displayconfig_getresource2(struct weston_output *output,
 	memset(&hdminfos, 0, sizeof(HdmiInfos_t));
 	wl_list_for_each (mode,  &mode_list, link) {
             weston_log("========width=%d,height=%d,refresh=%d,flag=%d\n",mode->width,mode->height,mode->refresh,mode->flags); 
-			if (mode->width==0 || mode->height==0) {
+			if (mode->width==0 || mode->height==0 || mode->width<720) {
 				break;
 			}
 			hdminfos.hdmi_info[i].xres = mode->width;
 			hdminfos.hdmi_info[i].yres = mode->height;
-			hdminfos.hdmi_info[i].refresh = mode->refresh;
-			hdminfos.hdmi_info[i].interlaced = 0;
+			hdminfos.hdmi_info[i].refresh = mode->vrefresh;
+			hdminfos.hdmi_info[i].interlaced = mode->interlace;
             i++;
 	}
 	hdminfos.count = i;
