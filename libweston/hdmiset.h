@@ -35,6 +35,11 @@ int set_plane(int fb_id, int crtc_id);
 int hdmi_check_mode(int xres, int yres, int refresh, int flag, int clock);
 
 int hdmi_get_current_mode(int *xres, int *yres);
+
+int hdmi_get_last_resolution(int* xres, int* yres, int* refresh, bool* interlaced, int type);
+
+void set_best_hdmi_mode(int xres, int yres, int refresh, bool interlaced);
+
 #ifdef  __cplusplus
   }
 #endif

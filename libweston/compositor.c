@@ -4740,8 +4740,10 @@ weston_output_destroy(struct weston_output *output)
 		weston_compositor_remove_output(output);
 		weston_output_enable_undo(output);
 	}
-
-	free(output->name);
+    if (output->name) {
+		free(output->name);
+		output->name = NULL;
+    }
 }
 
 static void
