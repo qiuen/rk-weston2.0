@@ -1421,6 +1421,9 @@ void
 weston_compositor_unlock(struct weston_compositor *compositor);
 void
 weston_compositor_wake(struct weston_compositor *compositor);
+
+void weston_compositor_wake_and_sleep(struct weston_compositor *compositor, int state, int value);
+
 void
 weston_compositor_offscreen(struct weston_compositor *compositor);
 void

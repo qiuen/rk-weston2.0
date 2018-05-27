@@ -1977,6 +1977,7 @@ notify_key(struct weston_seat *seat, uint32_t time, uint32_t key,
 		weston_compositor_idle_inhibit(compositor);
 	} else {
 		weston_compositor_idle_release(compositor);
+		weston_compositor_wake_and_sleep(compositor, key, state);
 	}
 
 	end = keyboard->keys.data + keyboard->keys.size;
