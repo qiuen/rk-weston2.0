@@ -4005,6 +4005,36 @@ weston_compositor_dpms(struct weston_compositor *compositor,
 			output->set_dpms(output, state);
 }
 
+WL_EXPORT void
+weston_compositor_wake_and_sleep(struct weston_compositor *compositor, int state, int value) {
+   
+     if (state != 116) {
+        return;
+	 }
+  //  return;
+#if 1
+     weston_log("+++++++++++++++++++++++++++weston_compositor_wake_and_sleep,state=%d,value=%d\n",state, value);
+     if (compositor->state == WESTON_COMPOSITOR_ACTIVE) {
+	 	
+		compositor->state = WESTON_COMPOSITOR_SLEEPING;
+	 	if (hdmi_hotplug == 1) {
+         //  usleep(2000000);
+		}
+        system("echo mem > /sys/power/state");
+     } else {
+		compositor->state = WESTON_COMPOSITOR_ACTIVE;
+		system("startapp.sh&");
+      //  pthread_t t1;
+	  //	pthread_create(&t1, NULL, force_draw, (void *)compositor);
+	 }
+     
+	//}
+#endif
+  
+
+    
+	
+}
 /** Restores the compositor to active status
  *
  * \param compositor The compositor instance
@@ -4024,12 +4054,10 @@ weston_compositor_wake(struct weston_compositor *compositor)
 	/* The state needs to be changed before emitting the wake
 	 * signal because that may try to schedule a repaint which
 	 * will not work if the compositor is still sleeping */
+	return;
 	compositor->state = WESTON_COMPOSITOR_ACTIVE;
 	struct weston_output *output;
-	wl_list_for_each(output, &compositor->output_list, link) {
-		weston_output_schedule_repaint_reset(output);
-		weston_output_schedule_repaint(output);
-	}
+
 	switch (old_state) {
 	case WESTON_COMPOSITOR_SLEEPING:
 	case WESTON_COMPOSITOR_IDLE:

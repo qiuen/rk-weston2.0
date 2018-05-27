@@ -31,7 +31,7 @@
 #include <math.h>
 #include <cairo.h>
 #include <sys/time.h>
-
+#include <signal.h>
 #include <linux/input.h>
 #include <wayland-client.h>
 #include "window.h"
@@ -164,11 +164,49 @@ touch_down_handler(struct widget *widget, struct input *input,
 	window_move(flower->window, input, display_get_serial(flower->display));
 }
 
+struct flower flower;
+struct display *d;
+struct timeval tv;
+static void
+on_caught_signal(int s, siginfo_t *siginfo, void *context)
+{
+	/* This signal handler will do a best-effort backtrace, and
+	 * then call the backend restore function, which will switch
+	 * back to the vt we launched from or ungrab X etc and then
+	 * raise SIGTRAP.  If we run weston under gdb from X or a
+	 * different vt, and tell gdb "handle *s* nostop", this
+	 * will allow weston to switch back to gdb on crash and then
+	 * gdb will catch the crash with SIGTRAP.*/
+
+	//printf("==============caught signal: %d\n", s);
+    widget_destroy(flower.widget);
+	window_destroy(flower.window);
+	display_destroy(d);
+    exit(0);    
+
+}
+
+
+static void
+catch_signals(void)
+{
+	struct sigaction action;
+
+	action.sa_flags = SA_SIGINFO | SA_RESETHAND;
+	action.sa_sigaction = on_caught_signal;
+	sigemptyset(&action.sa_mask);
+	sigaction(SIGSEGV, &action, NULL);
+	sigaction(SIGABRT, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+}
+
+
 int main(int argc, char *argv[])
 {
-	struct flower flower;
-	struct display *d;
-	struct timeval tv;
+//	struct flower flower;
+//	struct display *d;
+//	struct timeval tv;
 
 	d = display_create(&argc, argv);
 	if (d == NULL) {
@@ -179,8 +217,8 @@ int main(int argc, char *argv[])
 	gettimeofday(&tv, NULL);
 	srandom(tv.tv_usec);
 
-	flower.width = 200;
-	flower.height = 200;
+	flower.width = 5;
+	flower.height = 5;
 	flower.display = d;
 	flower.window = window_create(d);
 	flower.widget = window_add_widget(flower.window, &flower);
@@ -193,12 +231,12 @@ int main(int argc, char *argv[])
 	widget_set_touch_down_handler(flower.widget, touch_down_handler);
 
 	window_schedule_resize(flower.window, flower.width, flower.height);
-
+    catch_signals();
 	display_run(d);
-
-	widget_destroy(flower.widget);
-	window_destroy(flower.window);
-	display_destroy(d);
+        printf("=========================display_run end.\n");
+	//widget_destroy(flower.widget);
+	//window_destroy(flower.window);
+	//display_destroy(d);
 
 	return 0;
 }
