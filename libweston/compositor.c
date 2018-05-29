@@ -4009,26 +4009,21 @@ WL_EXPORT void
 weston_compositor_wake_and_sleep(struct weston_compositor *compositor, int state, int value) {
    
      if (state != 116) {
-        return;
-	 }
+         return;
+     }
   //  return;
 #if 1
      weston_log("+++++++++++++++++++++++++++weston_compositor_wake_and_sleep,state=%d,value=%d\n",state, value);
      if (compositor->state == WESTON_COMPOSITOR_ACTIVE) {
-	 	
+                	 	
 		compositor->state = WESTON_COMPOSITOR_SLEEPING;
-	 	if (hdmi_hotplug == 1) {
-         //  usleep(2000000);
-		}
-        system("echo mem > /sys/power/state");
+                
+                system("echo mem > /sys/power/state");
      } else {
 		compositor->state = WESTON_COMPOSITOR_ACTIVE;
-		system("startapp.sh&");
-      //  pthread_t t1;
-	  //	pthread_create(&t1, NULL, force_draw, (void *)compositor);
-	 }
+		system("startapp.sh&"); 
+     }
      
-	//}
 #endif
   
 
