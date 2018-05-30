@@ -77,12 +77,12 @@ draw_stuff(cairo_surface_t *surface, int width, int height)
 	cairo_translate(cr, width / 2, height / 2);
 	cairo_move_to(cr, cos(0) * r1, sin(0) * r1);
 	for (t = 0, i = 0; i < petal_count; i++, t += dt * 2) {
-		x1 = cos(t) * r1;
-		y1 = sin(t) * r1;
-		x2 = cos(t + dt) * r2;
-		y2 = sin(t + dt) * r2;
-		x3 = cos(t + 2 * dt) * r1;
-		y3 = sin(t + 2 * dt) * r1;
+		x1 = 1;//cos(t) * r1;
+		y1 = 1;//sin(t) * r1;
+		x2 = 1;//cos(t + dt) * r2;
+		y2 = 1;//sin(t + dt) * r2;
+		x3 = 1;//cos(t + 2 * dt) * r1;
+		y3 = 1;//sin(t + 2 * dt) * r1;
 
 		cairo_curve_to(cr,
 			       x1 - y1 * u, y1 + x1 * u,
