@@ -3024,6 +3024,7 @@ udev_drm_event(int fd, uint32_t mask, void *data)
 	event = udev_monitor_receive_device(b->udev_monitor);
 	if (udev_event_is_hotplug(b, event))
 		update_outputs(b, event);
+        udev_device_unref(event);
 	pthread_mutex_unlock(mutex); 
 	
 	return 1;
