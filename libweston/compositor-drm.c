@@ -2475,13 +2475,26 @@ drm_output_set_mode(struct weston_output *base,
 		goto err_free;
 
     if (output->base.fake_width!=0 && output->base.fake_height!=0) {
-        b->fake_width = output->base.fake_width;
+		b->fake_width = output->base.fake_width;
 		b->fake_height = output->base.fake_height;
 	} else {
-        output->base.fake_width = b->fake_width;
+		output->base.fake_width = b->fake_width;
 		output->base.fake_height = b->fake_height;
 	}
 	
+	if (output->base.fake_width==0 || output->base.fake_height==0) {
+		int fake_width = 0;
+		int fake_height = 0;
+		get_fake_size(&fake_width, &fake_height);
+		if (fake_width==0 || fake_height==0) {
+			output->base.fake_width = current->base.width;
+			output->base.fake_height = current->base.height;
+		} else {
+			output->base.fake_width = fake_width;
+			output->base.fake_height = fake_height;
+		}
+	}
+#if 0	
 	int fake_width = 0;
 	int fake_height = 0;
 	get_fake_size(&fake_width, &fake_height);
@@ -2493,7 +2506,7 @@ drm_output_set_mode(struct weston_output *base,
          weston_log("!!!!!!!!please check weston.ini config, weather set the mode size is the same as the WAYLAND_FAKE_UI_SIZE env");
 		 goto err_free; 
 	}
-	
+#endif
 
 	output->base.current_mode = &current->base;
 	output->base.current_mode->flags |= WL_OUTPUT_MODE_CURRENT;
@@ -3017,6 +3030,11 @@ udev_event_is_hotplug(struct drm_backend *b, struct udev_device *device)
 static int
 udev_drm_event(int fd, uint32_t mask, void *data)
 {
+	char *fake_size = getenv("WAYLAND_FAKE_UI_SIZE");
+	if (fake_size == NULL) {
+		system("reboot");
+		return 0;
+	}
 	pthread_mutex_lock(mutex); 
 	struct drm_backend *b = data;
 	struct udev_device *event;

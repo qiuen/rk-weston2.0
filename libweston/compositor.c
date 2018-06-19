@@ -4194,6 +4194,24 @@ static void unbind_resource(struct wl_resource *resource)
 	wl_list_remove(wl_resource_get_link(resource));
 }
 
+static void 
+get_fake_size(int *width, int *height) {
+    
+	int fake_width = 0;
+	int fake_height = 0;
+	int refresh = 0;
+	weston_log("+++++++++++++++++get_fake_size\n");
+	char *fake_size = getenv("WAYLAND_FAKE_UI_SIZE");
+	if (fake_size != NULL) {
+		sscanf(fake_size, "%dx%d@%d", &fake_width, &fake_height, &refresh);
+		*width = fake_width;
+		*height = fake_height;
+		weston_log("drm_output_init_egl fake_width=%d,fake_height=%d\n",fake_width, fake_height);
+	}
+    return;
+}
+
+
 static void
 bind_output(struct wl_client *client,
 	    void *data, uint32_t version, uint32_t id)
@@ -4224,12 +4242,36 @@ bind_output(struct wl_client *client,
 		wl_output_send_scale(resource,
 				     output->current_scale);
 
+	int fake_width = 0;
+	int fake_height = 0;
+	get_fake_size(&fake_width, &fake_height);
+    
 	wl_list_for_each (mode, &output->mode_list, link) {
-		wl_output_send_mode(resource,
-				    mode->flags,
-				    mode->width,
-				    mode->height,
-				    mode->refresh);
+
+	     if (fake_width==0 || fake_height==0) {
+			wl_output_send_mode(resource,
+					    mode->flags,
+					    mode->width,
+					    mode->height,
+					    mode->refresh);
+	     	
+		} else {
+	        if (mode->width==fake_width || mode->height==fake_height) {
+				wl_output_send_mode(resource,
+					    3,
+					    fake_width,
+					    fake_height,
+					    mode->refresh);
+			} else {
+			
+				wl_output_send_mode(resource,
+					    mode->flags,
+					    mode->width,
+					    mode->height,
+					    mode->refresh);
+			}
+
+		}
 	}
 
 	if (version >= WL_OUTPUT_DONE_SINCE_VERSION)
