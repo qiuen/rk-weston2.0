@@ -4245,7 +4245,11 @@ bind_output(struct wl_client *client,
 	int fake_width = 0;
 	int fake_height = 0;
 	get_fake_size(&fake_width, &fake_height);
-    
+	char *ui_mode = getenv("UI_RENDERER_MODE");
+	if ((!strcmp(output->name, "TV-1") && ui_mode!=NULL && atoi(ui_mode)==3) || atoi(ui_mode)==0) {
+		fake_width = 0;
+		fake_height = 0;
+	}
 	wl_list_for_each (mode, &output->mode_list, link) {
 
 	     if (fake_width==0 || fake_height==0) {

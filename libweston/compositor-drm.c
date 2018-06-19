@@ -2481,11 +2481,15 @@ drm_output_set_mode(struct weston_output *base,
 		output->base.fake_width = b->fake_width;
 		output->base.fake_height = b->fake_height;
 	}
-	
+	char *ui_mode = getenv("UI_RENDERER_MODE");
 	if (output->base.fake_width==0 || output->base.fake_height==0) {
 		int fake_width = 0;
-		int fake_height = 0;
-		get_fake_size(&fake_width, &fake_height);
+	    int fake_height = 0;
+	    get_fake_size(&fake_width, &fake_height);
+		if ((!strcmp(output->base.name, "TV-1") && ui_mode!=NULL && atoi(ui_mode)==3) || atoi(ui_mode)==0) {
+			fake_width = 0;
+			fake_height = 0;
+		}
 		if (fake_width==0 || fake_height==0) {
 			output->base.fake_width = current->base.width;
 			output->base.fake_height = current->base.height;
@@ -2494,11 +2498,15 @@ drm_output_set_mode(struct weston_output *base,
 			output->base.fake_height = fake_height;
 		}
 	}
+	if (atoi(ui_mode)==0) {
+		output->base.fake_width = current->base.width;
+		output->base.fake_height = current->base.height;
+	}
 #if 0	
 	int fake_width = 0;
 	int fake_height = 0;
 	get_fake_size(&fake_width, &fake_height);
-	if (output->base.fake_width==0 || output->base.fake_height==0) {
+	if ((output->base.fake_width==0 || output->base.fake_height==0) && (fake_width!=0 && fake_height!=0)) {
         output->base.fake_width =  fake_width;
 		output->base.fake_height = fake_height;
 	}
@@ -3030,10 +3038,10 @@ udev_event_is_hotplug(struct drm_backend *b, struct udev_device *device)
 static int
 udev_drm_event(int fd, uint32_t mask, void *data)
 {
-	char *fake_size = getenv("WAYLAND_FAKE_UI_SIZE");
-	if (fake_size == NULL) {
-		system("reboot");
-		return 0;
+	char *ui_mode = getenv("UI_RENDERER_MODE");
+    if (ui_mode!=NULL && (atoi(ui_mode)==3 || atoi(ui_mode)==0)) {
+       system("reboot");
+	   return 0;
 	}
 	pthread_mutex_lock(mutex); 
 	struct drm_backend *b = data;
