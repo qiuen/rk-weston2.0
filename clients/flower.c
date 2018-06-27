@@ -217,8 +217,8 @@ int main(int argc, char *argv[])
 	gettimeofday(&tv, NULL);
 	srandom(tv.tv_usec);
 
-	flower.width = 5;
-	flower.height = 5;
+	flower.width = 1;
+	flower.height = 1;
 	flower.display = d;
 	flower.window = window_create(d);
 	flower.widget = window_add_widget(flower.window, &flower);

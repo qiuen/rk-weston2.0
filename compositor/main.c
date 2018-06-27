@@ -1170,7 +1170,7 @@ drm_backend_output_configure(struct wl_listener *listener, void *data)
 		weston_log("Cannot use weston_drm_output_api.\n");
 		return;
 	}
-
+    char *ui_mode = getenv("UI_RENDERER_MODE");
 	section = weston_config_get_section(wc, "output", "name", output->name);
 	weston_config_section_get_string(section, "mode", &s, "preferred");
 
@@ -1181,7 +1181,9 @@ drm_backend_output_configure(struct wl_listener *listener, void *data)
 	} else if (wet->drm_use_current_mode || strcmp(s, "current") == 0) {
 		mode = WESTON_DRM_BACKEND_OUTPUT_CURRENT;
 	} else if (strcmp(s, "preferred") != 0) {
+	  if (ui_mode != NULL && atoi(ui_mode)==1) {
 		modeline = s;
+	  }
 		s = NULL;
 	}
 	free(s);
