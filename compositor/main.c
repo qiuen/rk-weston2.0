@@ -1181,9 +1181,7 @@ drm_backend_output_configure(struct wl_listener *listener, void *data)
 	} else if (wet->drm_use_current_mode || strcmp(s, "current") == 0) {
 		mode = WESTON_DRM_BACKEND_OUTPUT_CURRENT;
 	} else if (strcmp(s, "preferred") != 0) {
-	  if (ui_mode != NULL && atoi(ui_mode)==1) {
 		modeline = s;
-	  }
 		s = NULL;
 	}
 	free(s);
