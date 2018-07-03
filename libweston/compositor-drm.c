@@ -2466,6 +2466,13 @@ drm_output_set_mode(struct weston_output *base,
 
 	for (i = 0; i < output->connector->count_modes; i++) {
 		drm_mode = drm_output_add_mode(output, &output->connector->modes[i]);
+		if (drm_mode && i==0) {
+		   int width = output->connector->modes[i].hdisplay;
+		   int height = output->connector->modes[i].vdisplay;
+		   int vrefresh = output->connector->modes[i].vrefresh;
+		   int flag = output->connector->modes[i].flags & DRM_MODE_FLAG_INTERLACE;
+		   set_best_hdmi_mode(width, height, vrefresh, flag);			
+		}
 		if (!drm_mode)
 			goto err_free;
 	}
