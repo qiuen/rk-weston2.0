@@ -4013,15 +4013,15 @@ weston_compositor_wake_and_sleep(struct weston_compositor *compositor, int state
      }
   //  return;
 #if 1
-     weston_log("+++++++++++++++++++++++++++weston_compositor_wake_and_sleep,state=%d,value=%d\n",state, value);
      if (compositor->state == WESTON_COMPOSITOR_ACTIVE) {
                 	 	
 		compositor->state = WESTON_COMPOSITOR_SLEEPING;
-                
+                system("echo 0 > /sys/class/leds/power-green/brightness");           
                 system("echo mem > /sys/power/state");
      } else {
 		compositor->state = WESTON_COMPOSITOR_ACTIVE;
 		//system("startapp.sh&"); 
+                system("echo 1 > /sys/class/leds/power-green/brightness");  
                 system("killall gstgtkPlayer");
      }
      
